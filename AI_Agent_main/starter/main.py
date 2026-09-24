@@ -492,21 +492,56 @@ async def invoke(payload, context=None):
             agent_core_browser.browser,
         ]
 
-        mcp_client = MCPClient(lambda: streamable_http_client(GATEWAY_URL))
-        with mcp_client as client:
-            gateway_tools = client.list_tools_sync()
-            agent_tools = tools + gateway_tools
-            agent = Agent(
-                model=model,
-                tools=agent_tools,
-                hooks=[memory_hook],
-                system_prompt=(
-                    "You are a helpful Amazon customer support assistant. "
-                    "Answer clearly, use the knowledge base, order/refund tools, and "
-                    "customer context when available."
-                ),
+        agent_tools = tools
+        gateway_available = False
+        try:
+            logger.info(
+                "Loading Gateway tools",
+                extra={"event": "gateway_tools_loading_started"},
             )
-            result = agent(user_input)
+            mcp_client = MCPClient(lambda: streamable_http_client(GATEWAY_URL))
+            with mcp_client as client:
+                gateway_tools = client.list_tools_sync()
+            agent_tools = tools + gateway_tools
+            gateway_available = True
+            logger.info(
+                "Gateway tools loaded",
+                extra={
+                    "event": "gateway_tools_loaded",
+                    "tool_count": len(gateway_tools),
+                },
+            )
+        except Exception as exc:
+            logger.warning(
+                "Gateway unavailable; continuing with local tools",
+                exc_info=True,
+                extra={
+                    "event": "gateway_tools_loading_failed",
+                    "error_type": type(exc).__name__,
+                },
+            )
+
+        gateway_status = (
+            "Gateway order and refund tools are available."
+            if gateway_available
+            else (
+                "Gateway order and refund tools are temporarily unavailable. "
+                "Do not claim to have checked an order or processed a refund; "
+                "instead, explain that the customer should try again later."
+            )
+        )
+        agent = Agent(
+            model=model,
+            tools=agent_tools,
+            hooks=[memory_hook],
+            system_prompt=(
+                "You are a helpful Amazon customer support assistant. "
+                "Answer clearly, use the knowledge base, order/refund tools, and "
+                "customer context when available. "
+                f"{gateway_status}"
+            ),
+        )
+        result = agent(user_input)
 
         content = result.message.get("content", [])
         for block in content:
@@ -517,8 +552,17 @@ async def invoke(payload, context=None):
 
         return str(result)
     except Exception as exc:
-        logger.exception("Customer support agent invocation failed")
-        return f"I hit an error while processing your request: {exc}"
+        logger.exception(
+            "Customer support agent invocation failed",
+            extra={
+                "event": "agent_invocation_failed",
+                "error_type": type(exc).__name__,
+            },
+        )
+        return (
+            "I'm sorry, but I couldn't complete that request right now. "
+            "Please try again shortly."
+        )
 
 
 # ── CLI entry point (do not modify) ──────────────────────────────────────────
