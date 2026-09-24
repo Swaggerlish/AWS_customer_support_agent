@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments and packaging
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# AWS and local tool state
+.aws/
+.bedrock_agentcore/
+.cdk.out/
+.terraform/
+terraform.tfstate*
+
+# Local dependency lists
+requirements.txt
+requirements-agentcore.txt
+
+# Playwright and test output
+playwright-report/
+test-results/
+blob-report/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
