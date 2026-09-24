@@ -48,3 +48,6 @@ blob-report/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Submission document is intentionally trackable
+!revised submission.docx
